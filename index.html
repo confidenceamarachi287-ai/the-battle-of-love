@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tragic Anime Simulation: Separation & Fate</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: #050206; font-family: 'Times New Roman', serif; }
+        #canvas-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
+        
+        /* Cinematic Letterbox Bars */
+        .cinematic-bar { position: absolute; left: 0; width: 100%; height: 10%; background: #000; z-index: 10; }
+        .top-bar { top: 0; border-bottom: 1px solid #221111; }
+        .bottom-bar { bottom: 0; border-top: 1px solid #221111; }
+
+        /* Subtitle Text Overlay */
+        .subtitle-box {
+            position: absolute;
+            bottom: 12%;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 12;
+            text-align: center;
+            width: 80%;
+            pointer-events: none;
+        }
+        #subtitle {
+            font-size: 1.6rem;
+            color: #fff;
+            text-shadow: 0 0 8px #000, 0 0 15px rgba(139, 0, 0, 0.6);
+            font-style: italic;
+            transition: opacity 1s ease-in-out;
+        }
+        #act-indicator {
+            position: absolute;
+            top: 12%;
+            left: 5%;
+            z-index: 12;
+            color: #8b0000;
+            font-family: monospace;
+            font-size: 0.9rem;
+            letter-spacing: 2px;
+        }
+    </style>
+    <script src="https://cloudflare.com"></script>
+</head>
+<body>
+
+    <div class="cinematic-bar top-bar"></div>
+    <div id="act-indicator">TIMELINE STATUS: ACTIVE</div>
+    
+    <div class="subtitle-box">
+        <p id="subtitle">"The battlefield is cold... but losing you is colder."</p>
+    </div>
+    
+    <div class="cinematic-bar bottom-bar"></div>
+    <div id="canvas-container"></div>
+
+    <script>
+        // 1. Core Scene Setup
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.FogExp2(0x050206, 0.02);
+
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        container.appendChild(renderer.domElement);
+
+        // 2. Environment: Ash and Ember Particle Systems
+        const particleCount = 1500;
+        const geometry = new THREE.BufferGeometry();
+        const positions = new Float32Array(particleCount * 3);
+        const colors = new Float32Array(particleCount * 3);
+
+        for(let i = 0; i < particleCount; i++) {
+            // Spread particles across a wide battlefield volume
+            positions[i*3] = (Math.random() - 0.5) * 60;
+            positions[i*3+1] = (Math.random() - 0.5) * 40;
+            positions[i*3+2] = (Math.random() - 0.5) * 60;
+
+            // Mix dark ash colors with burning embers (crimson/orange)
+            if(Math.random() > 0.5) {
+                colors[i*3] = 0.6 + Math.random()*0.4; // R
+                colors[i*3+1] = 0.1;                  // G
+                colors[i*3+2] = 0.1;                  // B
+            } else {
+                colors[i*3] = 0.3; colors[i*3+1] = 0.3; colors[i*3+2] = 0.35; // Gray Ash
+            }
+        }
+
+        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+        const material = new THREE.PointsMaterial({
+            size: 0.25,
+            vertexColors: true,
+            transparent: true,
+            opacity: 0.8,
+            blending: THREE.AdditiveBlending
+        });
+
+        const battlefieldParticles = new THREE.Points(geometry, material);
+        scene.add(battlefieldParticles);
+
+        // 3. Symbolic Entities: The Severed Bond (Two glowing energy cores drifting apart)
+        const coreGeo = new THREE.SphereGeometry(1, 32, 32);
+        
+        const coreMatA = new THREE.MeshBasicMaterial({ color: 0xff3333 }); // Crimson Core (War / Loss)
+        const coreA = new THREE.Mesh(coreGeo, coreMatA);
+        scene.add(coreA);
+
+        const coreMatB = new THREE.MeshBasicMaterial({ color: 0x3399ff }); // Blue Core (Memories / Separation)
+        const coreB = new THREE.Mesh(coreGeo, coreMatB);
+        scene.add(coreB);
+
+        // Lightning / Flash Event Mesh
+        const flashGeo = new THREE.PlaneGeometry(200, 200);
+        const flashMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0 });
+        const flash = new THREE.Mesh(flashGeo, flashMat);
+        flash.position.z = -10;
+        scene.add(flash);
+
+        // Camera Initialization
+        camera.position.z = 25;
+
+        // 4. Algorithmic Narrative Timeline Database
+        const script = [
+            { act: "ACT I: THE CLASH", text: "Blade meets blade. The cycle of vengeance demands a blood price.", color: 0x8b0000 },
+            { act: "ACT II: THE MORTAL BLOW", text: "A flash of steel... and a bond is severed forever.", color: 0xff0000, triggerFlash: true },
+            { act: "ACT III: THE SEPARATION", text: "As the dust settles, they drift into separate worlds.", color: 0x221133 },
+            { act: "ACT IV: THE ETERNAL SILENCE", text: "Even across time, the echo of your voice remains.", color: 0x0a0510 }
+        ];
+
+        let currentSegment = 0;
+        let clock = new THREE.Clock();
+
+        function updateSubtitleTimeline(time) {
+            // Cycles acts dynamically over time based on duration calculations
+            const index = Math.floor((time / 10) % script.length);
+            
+            if (index !== currentSegment) {
+                currentSegment = index;
+                const node = script[currentSegment];
+                
+                document.getElementById('subtitle').style.opacity = 0;
+                setTimeout(() => {
+                    document.getElementById('subtitle').innerText = node.text;
+                    document.getElementById('act-indicator').innerText = `TIMELINE STATUS: ${node.act}`;
+                    document.getElementById('subtitle').style.opacity = 1;
+                }, 500);
+
+                if(node.triggerFlash) {
+                    flash.material.opacity = 0.8;
+                }
+            }
+        }
+
+        // 5. Physics & Animation Engine Loop
+        function animate() {
+            requestAnimationFrame(animate);
+            const totalTime = clock.getElapsedTime();
+
+            updateSubtitleTimeline(totalTime);
+
+            // Handle lightning strike decay
+            if (flash.material.opacity > 0) {
+                flash.material.opacity -= 0.04;
+            }
+
+            // Animate Cores drifting apart (Symbolizing Tragic Separation)
+            const separationDistance = 2 + (totalTime % 40) * 0.25; 
+            coreA.position.set(-separationDistance, Math.sin(totalTime) * 0.5, 0);
+            coreB.position.set(separationDistance, Math.cos(totalTime) * 0.5, 0);
+
+            // Rotate and swirl embers across the battlefield space
+            battlefieldParticles.rotation.y = totalTime * 0.05;
+            battlefieldParticles.rotation.x = Math.sin(totalTime * 0.02) * 0.2;
+
+            // Camera work: Dramatic slowly revolving panning movement
+            camera.position.x = Math.sin(totalTime * 0.2) * 6;
+            camera.position.y = Math.cos(totalTime * 0.1) * 2;
+            camera.lookAt(0, 0, 0);
+
+            renderer.render(scene, camera);
+        }
+
+        // Handle window size changes smoothly
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Fire loop
+        animate();
+    </script>
+</body>
+</html>
